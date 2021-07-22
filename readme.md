@@ -13,12 +13,12 @@ umount /data && umount /sdcard  #取消挂载userdata分区
 parted /dev/block/sda
 rm 21  #删除21号分区（userdata），这会删除手机所有数据
 #删除userdata分区后新建磁盘分区大小起始到末尾为1611MB-59.1GB
-mkpart esp fat32 1611MB 1739MB         #新建esp分区大小设为128MB
-mkpart pe fat32 1739MB 2763MB          #新建pe分区大小设为1024MB
-mkpart win ntfs 2763MB 35531MB         #新建win分区大小设为32GB
-mkpart userdata ext4 35531MB 59.1GB    #新建userdata分区
+mkpart esp fat32 1611MB 2123MB         #新建esp分区大小设为512MB
+mkpart pe fat32 2123MB 3147MB          #新建pe分区大小设为1024MB
+mkpart win ntfs 3147MB 44107MB         #新建win分区大小设为40GB
+mkpart userdata ext4 44107MB 59.1GB
 or
-resizepart 21 8GB  #21是userdata分区号
+resizepart 21 8GB  #重新设置userdata分区号
 mkpart esp fat32 .... #新建esp分区
 mkpart pe fat32 ....  #新建pe分区
 mkpart win ntfs ....  #新建win分区
@@ -59,3 +59,38 @@ fastboot flash boot boot-polaris.img
 刷入到recovery分区
 fastboot flash recovery boot-polaris.img
 ```
+
+### 六、开机进入PE系统，安装Windows11 Arm镜像及驱动
+
+> 挂载ESP分区,21为你的esp分区号	
+
+```shell
+diskpart       #启动磁盘管理工具
+select disk 0  #选择磁盘
+list part      #磁盘分区列表
+select part 21 #选择esp分区
+assign letter=Y
+exit
+```
+
+- 安装 windows arm64
+
+  1. 打开dism++ 释放镜像到D盘，并选择释放引导分区
+  2. 安装驱动，选择U盘中的output文件夹
+
+- 关闭驱动签名并关机
+
+  ```shell
+  bcdedit /store Y:\efi\microsoft\boot\bcd /set {Default} testsigning on
+  bcdedit /store Y:\efi\microsoft\boot\bcd /set {Default} nointegritychecks on
+  shutdown -s -t 0
+  ```
+
+- 重启，boot uefi 进入完整Windows系统
+
+### 常见问题
+
+1. 我需要更新驱动如何进PE？
+   答：进TWRP挂载esp分区，重命名EFI文件夹为其他名字EFIA等，即可进入PE，也可以在fastboot抹掉esp分区fastboot erase esp ，但需要重新格式化esp分区，并在PE恢复引导
+2. 一加卡fastboot如何保留sda分区数据？
+   由于两个boot分区都是unbootable，就会卡fastboot，重刷boot也不会改变unbootable状态，9008刷lun4即sdd分区可解决卡fastboot问题，后面会出教程
